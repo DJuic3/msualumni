@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "560121892194",
+    "project_id": "alumini-bc88d",
+    "storage_bucket": "alumini-bc88d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560121892194:android:40e83d41c88d6fefbaf03b",
+        "android_client_info": {
+          "package_name": "com.example.msualumini"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaBGonNTcccpaKfsl0EUl5oqD-d5GaIFI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560121892194:android:c0208fea442391edbaf03b",
+        "android_client_info": {
+          "package_name": "zw.ac.msu.alumni_msu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaBGonNTcccpaKfsl0EUl5oqD-d5GaIFI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
