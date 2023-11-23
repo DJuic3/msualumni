@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:msualumini/auth/welcome.dart';
+import 'package:provider/provider.dart';
+import 'auth/provider.dart';
 import 'auth/signup.dart';
 import 'db_helper.dart';
 import 'home/store_data/theme.dart';
@@ -9,13 +11,22 @@ import 'package:firebase_core/firebase_core.dart';
 
 
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//
+//   // await Firebase.initializeApp();
+//   runApp(const MyApp());
+// }
 
-  // await Firebase.initializeApp();
-  runApp(const MyApp());
+
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AuthProvider(),
+      child: MyApp(),
+    ),
+  );
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 

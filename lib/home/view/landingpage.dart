@@ -154,78 +154,88 @@ class _UserListScreenState extends State<UserListScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userToken = prefs.getString('userToken');
 
-    final response = await http.get(
-      Uri.parse('http://172.105.154.202:8000/api/mobileusers'),
-      headers: {
-        'Authorization': 'Bearer $userToken',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('http://172.105.154.202:8000/api/mobileusers'),
+        headers: {
+          'Authorization': 'Bearer $userToken',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      // Parse the JSON response
-      final data = jsonDecode(response.body);
-      setState(() {
-        userData = data;
-      });
-    } else {
-      // Handle error
-      print('Failed to load data');
+      if (response.statusCode == 200) {
+        // Parse the JSON response
+        final List<dynamic> data = jsonDecode(response.body);
+
+        // Ensure that data is a List<Map<String, dynamic>>
+        if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
+          setState(() {
+            userData = data.cast<Map<String, dynamic>>();
+          });
+        } else {
+          print('Invalid API response format');
+        }
+      } else {
+        // Handle non-200 status code
+        print('Failed to load data. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+    } catch (e) {
+      // Handle other exceptions
+      print('Error fetching data: $e');
     }
   }
+
+  Future<void> _refreshData() async {
+    await fetchData();
+    // await  fetchUsers();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // backgroundColor: Color.fromARGB(255, 4, 12, 73),
-      body: Column(
-        children: [
-          SizedBox(height: 30),
-          Container(
-            alignment: Alignment.center,
-            padding: EdgeInsets.all(16.0),
-            child: const Row(
-              children: [
-                Text(
-                  'Alumni List',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                  ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: Column(
+          children: [
+            SizedBox(height: 10),
+            AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back),
+                color: Colors.black26,
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              title: Text(
+                'Alumni List',
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
-                SizedBox(width: 16), // Add some spacing between the text and image
-                // Image.asset(
-                //   'assets/images/midlands.jpeg', // Replace with the actual image path
-                //   width: 50, // Set the width of the image
-                //   height: 50, // Set the height of the image
-                // ),
-              ],
+              ),
             ),
-
-
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-                return Column(
-                  children: [
-                    UserCard(user: user),
-                    if (index < users.length - 1) Divider(), // Add Divider for all except the last item
-                  ],
-                );
-              },
+            Expanded(
+              child: ListView.builder(
+                itemCount: userData.length,
+                itemBuilder: (context, index) {
+                  final user = userData[index];
+                  return Column(
+                    children: [
+                      UserCard(user: user),
+                      if (index < userData.length - 1) Divider(),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-
-
-
-        ],
+          ],
+        ),
       ),
     );
-
   }
-
-
 }
-
 

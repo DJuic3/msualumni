@@ -2,29 +2,47 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 
 
 final String apiUrl = 'http://172.105.154.202:8000/api/posts';
 
-Future<void> createBlogPost(Map<String, dynamic> postData) async {
+Future<void> createBlogPost(String userToken, Map<String, dynamic> postData) async {
   final response = await http.post(
     Uri.parse(apiUrl),
     headers: <String, String>{
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer YourAccessToken', // Include the user's access token
+      'Authorization': 'Bearer $userToken', // Include the user's access token dynamically
     },
     body: jsonEncode(postData),
   );
 
   if (response.statusCode == 201) {
     // Blog post created successfully
+    print('Blog post created successfully');
+    Fluttertoast.showToast(
+      msg: 'Uploaded',
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.CENTER,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.green,
+      textColor: Colors.white,
+    );
   } else {
     // Handle errors
+    print('Error creating blog post: ${response.body}');
+    Fluttertoast.showToast(
+      msg: 'Not done',
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.CENTER,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+    );
   }
 }
-
 class CreateBlogPostScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -71,7 +89,12 @@ class _BlogPostFormState extends State<BlogPostForm> {
   String? educationError = null;
 
   void _submitForm() async {
-    final String apiUrl = 'http://172.105.154.202:8000/api/posts'; // Replace with your API URL
+    final String userToken = await getUserToken(); // Fetch the user's access token
+    if (userToken.isEmpty) {
+      // Handle the case where the user token is not available
+      print('User token not found');
+      return;
+    }
 
     final Map<String, dynamic> postData = {
       'title': titleController.text,
@@ -83,48 +106,23 @@ class _BlogPostFormState extends State<BlogPostForm> {
       'education': educationController.text,
     };
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(postData),
-    );
+    createBlogPost(userToken, postData);
 
-    if (response.statusCode == 201) {
-      // Blog post created successfully
-      print('Blog post created successfully');
-      Fluttertoast.showToast(
-        msg: 'Uploaded',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-      );
-
-      // Clear text fields after successful submission
-      titleController.clear();
-      contentController.clear();
-      contactemailController.clear();
-      companyController.clear();
-      positionController.clear();
-      locationController.clear();
-      educationController.clear();
-    } else {
-      // Handle errors
-      print('Error creating blog post: ${response.body}');
-      Fluttertoast.showToast(
-        msg: 'Not done',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
-    }
+    // Clear text fields after successful submission
+    titleController.clear();
+    contentController.clear();
+    contactemailController.clear();
+    companyController.clear();
+    positionController.clear();
+    locationController.clear();
+    educationController.clear();
   }
 
+  Future<String> getUserToken() async {
+    // Fetch the user token from SharedPreferences
+    final SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    return sharedPreferences.getString('userToken') ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -244,10 +242,7 @@ class _BlogPostFormState extends State<BlogPostForm> {
           ),
         )
 
-        // ElevatedButton(
-        //   onPressed: _submitForm,
-        //   child: Text('Create Blog Post'),
-        // ),
+
       ],
     );
   }

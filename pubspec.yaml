@@ -45,7 +45,11 @@ dependencies:
   flutter_local_notifications: ^15.1.1
   shared_preferences: ^2.0.10
   fluttertoast: ^8.0.8
-#  country_list: ^2.0.0
+  date_picker_plus: ^1.1.4
+  provider: ^6.1.1
+  url_launcher: ^6.0.13
+  flutter_typeahead: 4.8.0
+
 
   flutter_staggered_animations: ^1.0.0
   share: ^2.0.1

@@ -20,6 +20,7 @@ class LoginPage extends StatelessWidget {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+
   Future<void> loginUser(BuildContext context, String email, String password) async {
     try {
       // Show loading indicator
@@ -73,7 +74,6 @@ class LoginPage extends StatelessWidget {
       showErrorMessage(context, 'Error during login: $e');
     }
   }
-
   void showErrorMessage(BuildContext context, String message) {
     showDialog(
       context: context,
@@ -93,37 +93,28 @@ class LoginPage extends StatelessWidget {
       },
     );
   }
-  void checkUserLogin(BuildContext context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final userEmail = prefs.getString('userEmail');
-    final userToken = prefs.getString('userToken');
+  Future<void> checkExistingToken(BuildContext context) async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final token = sharedPreferences.getString('userToken');
 
-    if (userEmail != null && userToken != null) {
-      // Both email and token exist, navigate to the HomeScreen
-      Navigator.push(
+    if (token != null) {
+      // Token exists, navigate to HomeScreen directly
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => HomeScreen(),
         ),
       );
-    } else {
-      // Either email or token is missing, navigate to the LoginPage
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => LoginPage(),
-        ),
-      );
     }
   }
-
-
   double _sigmaX = 5; // from 0-10
   double _sigmaY = 5; // from 0-10
   double _opacity = 0.2;
   double _width = 350;
   double _height = 300;
   final _formKey = GlobalKey<FormState>();
+
+
 
   @override
   Widget build(BuildContext context) {

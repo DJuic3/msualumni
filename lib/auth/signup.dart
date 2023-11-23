@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../components/formfield.dart';
 import '../home/home.dart';
@@ -15,11 +16,18 @@ class Signup extends StatefulWidget {
 }
 
 class _SignupState extends State<Signup> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController email = TextEditingController();
+  final TextEditingController password = TextEditingController();
+  final TextEditingController password_confirmation = TextEditingController();
+  final TextEditingController name = TextEditingController();
 
-  Future<void> registerUser(BuildContext context, String email, String password) async {
+  Future<void> registerUser(BuildContext context, String email, String name, String password, String password_confirmation) async {
     try {
+      print('Registering User - Request Data:');
+      print('Name: $name');
+      print('Email: $email');
+      print('Password: $password');
+      print('Password Confirmation: $password_confirmation');
       // Show loading indicator
       showDialog(
         context: context,
@@ -27,25 +35,37 @@ class _SignupState extends State<Signup> {
         builder: (BuildContext context) {
           return const AlertDialog(
             title: Text('Registering User'),
-            content: CircularProgressIndicator(),
+          content: SizedBox(
+          width: 0.5, // Set your desired width
+          height: 0.5, // Set your desired height
+          child: CircularProgressIndicator(),
+          ),
           );
         },
       );
 
       final response = await http.post(
         Uri.parse('http://172.105.154.202:8000/api/register'),
-        body: {'email': email, 'password': password},
+        // headers: {'Accept': 'application/json'},
+        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+        body: json.encode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'password_confirmation': password_confirmation,
+        }),
       );
+
 
       // Close loading indicator
       Navigator.of(context).pop();
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
-
-        if (responseData.containsKey('userToken')) {
-          final userToken = responseData['userToken'];
-          print('User registered successfully');
+        final userToken = responseData['token'];
+        print(userToken);
+        if (responseData.containsKey('token')) {
+          final userToken = responseData['token'];
 
           // Save the user token to SharedPreferences
           final sharedPreferences = await SharedPreferences.getInstance();
@@ -58,11 +78,28 @@ class _SignupState extends State<Signup> {
               builder: (context) => HomeScreen(),
             ),
           );
-        } else {
+        }
+        else {
           showErrorMessage(context, 'Server did not return a user token.');
         }
+      } else if (response.statusCode == 422) {
+        final errorResponse = json.decode(response.body);
+        final errorMessage = errorResponse['message'];
+        final errors = errorResponse['errors'];
+
+        if (errors != null && errors.containsKey('password')) {
+          final passwordErrors = errors['password'];
+          final passwordErrorMessage = passwordErrors.isNotEmpty ? passwordErrors[0] : 'Password confirmation did not match.';
+          showErrorMessage(context, passwordErrorMessage);
+        } else {
+          showErrorMessage(context, errorMessage);
+        }
       } else {
-        showErrorMessage(context, 'User registration failed: ${response.reasonPhrase}');
+        print('Unexpected response:');
+        print('Status code: ${response.statusCode}');
+        print('Headers: ${response.headers}');
+        print('Body: ${response.body}');
+        showErrorMessage(context, 'An unexpected error occurred. Please try again later.');
       }
     } catch (e) {
       print('Error during registration: $e');
@@ -90,24 +127,40 @@ class _SignupState extends State<Signup> {
       },
     );
   }
+  showTermsAndConditionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Terms of Service and Privacy Policy'),
+          content: Text(
+            'By using this app, you agree to the following terms and conditions regarding the collection and use of your personal data: \n 1. Collection of Personal Information:We may collect personal information from you, such as your name, email address, and other relevant details when you register or interact with our app. This information is collected for the purpose of providing you with a personalized and enhanced user experience.'
+          ),
+          actions: <Widget>[
+            ElevatedButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[300],
       body: SingleChildScrollView(
-        child: Container(
+        child: SizedBox(
           height: MediaQuery.of(context).size.height,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Image.network(
-              //   'https://scontent.fhre2-2.fna.fbcdn.net/v/t39.30808-6/386059909_699855238849258_4149361829352165653_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=a2f6c7&_nc_ohc=E1bzvCw1bsgAX-5fAkm&_nc_ht=scontent.fhre2-2.fna&oh=00_AfDU1Sn-MHVSO0867DSAQwcJh3cZayNWcfhDl31swI33oA&oe=652025D4',
-              //
-              //   width: MediaQuery.of(context).size.width,
-              //   height: MediaQuery.of(context).size.height,
-              //   fit: BoxFit.cover,
-              // ),
+
               Image.asset(
                 'assets/images/bg.jpg',
                 width: MediaQuery.of(context).size.width,
@@ -140,10 +193,10 @@ class _SignupState extends State<Signup> {
                             borderRadius:
                             const BorderRadius.all(Radius.circular(30))),
                         width: MediaQuery.of(context).size.width * 0.9,
-                        height: MediaQuery.of(context).size.height * 0.49,
+                        height: MediaQuery.of(context).size.height * 0.51,
                         child: Form(
                           key: _formKey,
-                          child: Center(
+                          child: SingleChildScrollView(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.start,
@@ -153,23 +206,36 @@ class _SignupState extends State<Signup> {
                                 const Text(
                                   "Create Account",
                                   style: TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.black38,
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.start,
+                                  textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 30),
 
                                 MyTextField(
-                                  controller: emailController,
+                                  controller: name,
+                                  hintText: 'Name',
+                                  obscureText: false,
+                                ),
+                                const SizedBox(height: 5),
+
+                                MyTextField(
+                                  controller: email,
                                   hintText: 'Email',
                                   obscureText: false,
                                 ),
 
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 5),
                                 MyPasswordTextField(
-                                  controller: passwordController,
+                                  controller: password,
                                   hintText: 'Password',
+                                  obscureText: true,
+                                ),
+                                const SizedBox(height: 5),
+                                MyPasswordTextField(
+                                  controller: password_confirmation,
+                                  hintText: 'Password Confirmation',
                                   obscureText: true,
                                 ),
                                 const SizedBox(height: 30),
@@ -180,25 +246,22 @@ class _SignupState extends State<Signup> {
                                   crossAxisAlignment:
                                   CrossAxisAlignment.stretch,
                                   children: [
-                                    RichText(
-                                      text: const TextSpan(
-                                        text: '',
-                                        children: <TextSpan>[
+                                    Text.rich(
+                                      TextSpan(
+                                        text: 'By using this app, you agree to our ',
+                                        children: [
                                           TextSpan(
-                                            text:
-                                            'By selecting Agree & Continue below, I agree to our ',
+                                            text: 'Terms of Service and Privacy Policy',
                                             style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20),
+                                              color: const Color.fromARGB(255, 71, 233, 133),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                showTermsAndConditionsDialog(context);
+                                              },
                                           ),
-                                          TextSpan(
-                                              text:
-                                              'Terms of Service and Privacy Policy',
-                                              style: TextStyle(
-                                                  color: Color.fromARGB(
-                                                      255, 71, 233, 133),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20)),
                                         ],
                                       ),
                                     ),
@@ -206,7 +269,12 @@ class _SignupState extends State<Signup> {
 
                                     InkWell(
                                       onTap: () {
-                                        registerUser(context, emailController.text, passwordController.text);
+                                        registerUser(
+                                          context,
+                                          email.text,
+                                          name.text,
+                                          password.text,
+                                          password_confirmation.text,);
                                         // Navigator.push(
                                         //   context,
                                         //   MaterialPageRoute(

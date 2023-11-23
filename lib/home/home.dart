@@ -1,11 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:msualumini/home/profile/profile.dart';
 import 'package:msualumini/home/store_data/accouncontroller.dart';
-import 'package:msualumini/home/store_data/account_model.dart';
 import 'package:msualumini/home/store_data/button.dart';
 import 'package:msualumini/home/store_data/size_config.dart';
 import 'package:msualumini/home/store_data/theme.dart';
@@ -13,8 +13,9 @@ import 'package:msualumini/home/store_data/ui.dart';
 import 'package:msualumini/home/view/blogs.dart';
 import 'package:msualumini/home/view/landingpage.dart';
 import 'package:msualumini/home/view/showblogs.dart';
-import 'package:msualumini/profile/details.dart';
-import 'package:msualumini/testfile.dart';
+import 'package:provider/provider.dart';
+import '../auth/provider.dart';
+import '../auth/welcome.dart';
 import '../services/reminders.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +32,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late NotifyHelper notifyHelper;
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
 
   @override
   void initState() {
@@ -65,48 +67,112 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-
   Future<void> logoutUser(BuildContext context) async {
-    final response = await http.post(
-      Uri.parse(
-          'http://172.105.154.202:8000/api/logout'), // Replace with your API URL
-    );
-
-    if (response.statusCode == 200) {
-      // Logout successful, clear the user's session/token
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-
-      // Navigate to SignUp page
-      Navigator.pushReplacementNamed(context, '/signup');
-    } else {
-      // Logout failed, display a pop-up dialog
+    try {
+      // Show loading indicator
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Logout Failed'),
-            content: Text('Failed to logout. Please try again.',
-              style: TextStyle(fontSize: 10),),
-            actions: [
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
+          return const AlertDialog(
+            title: Text('Logging Out'),
+            content: CircularProgressIndicator(),
           );
         },
       );
+
+      final sharedPreferences = await SharedPreferences.getInstance();
+      final token = sharedPreferences.getString('userToken');
+
+      if (token != null) {
+        final response = await http.post(
+          Uri.parse('http://172.105.154.202:8000/api/logout'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        // Close loading indicator
+        Navigator.of(context).pop();
+
+        if (response.statusCode == 200) {
+          print('Logout successful');
+
+          // Clear the user token from SharedPreferences
+          sharedPreferences.remove('userToken');
+
+          // Navigate to the LoginScreen upon successful logout
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WelcomePage(),
+            ),
+          );
+        } else {
+          showErrorMessage(context, 'Logout failed: ${response.reasonPhrase}');
+        }
+      } else {
+        // Token not found, navigate to LoginScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error during logout: $e');
+      showErrorMessage(context, 'Error during logout: $e');
+    }
+  }
+  void showErrorMessage(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout Failed'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+  Future<String?> getUserEmail(BuildContext context) async {
+    final userToken = Provider.of<AuthProvider>(context, listen: false).userToken;
+
+    final apiUrl = 'http://172.105.154.202:8000/profile';
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {'Authorization': 'Bearer $userToken'},
+      );
+
+      if (response.statusCode == 200) {
+        // Parse the response JSON and extract the user email
+        final Map<String, dynamic> data = json.decode(response.body);
+        final String userEmail = data['email'];
+
+        return userEmail;
+      } else {
+        // Handle error cases
+        print('Failed to load user details: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      // Handle exceptions
+      print('Error fetching user details: $e');
+      return null;
     }
   }
 
-  Future<String?> getUserEmail() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userEmail');
-  }
 
   DateTime _selectedDate = DateTime.now();
   final AccountController _accountController = Get.put(AccountController());
@@ -120,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: context.theme.backgroundColor,
       appBar: _appBar(),
       drawer: Drawer(
-        backgroundColor: Colors.white60,
+        backgroundColor: Colors.white,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -128,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               accountName: Text('MIDLANDS STATE UNIVERSITY'),
               accountEmail: FutureBuilder<String?>(
-                future: getUserEmail(),
+                future: getUserEmail(context),
                 builder: (BuildContext context, AsyncSnapshot<String?> snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
@@ -139,7 +205,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Text(email);
                   }
                 },
-              ),
+              )
+,
               currentAccountPicture: const CircleAvatar(
                 backgroundImage: AssetImage('assets/images/midlands.jpeg'), // Replace with user's profile picture
 
@@ -195,17 +262,13 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-            // ListTile(
-            //   leading: const Icon(Icons.verified_user),
-            //   title: Text('Tests'),
-            //   onTap: () {
-            //     Navigator.push(
-            //         context,
-            //         MaterialPageRoute(
-            //             builder: (context) => Testfile()));
-            //
-            //   },
-            // ),
+            ListTile(
+              leading: const Icon(Icons.exit_to_app),
+              title: Text('Logout'),
+              onTap: () {
+                logoutUser(context);
+              },
+            ),
 
 
           ],

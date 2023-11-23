@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:msualumini/auth/passwordreset.dart';
+import 'package:msualumini/auth/provider.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home.dart';
 import '../auth/signup.dart';
@@ -15,9 +18,9 @@ class WelcomePage extends StatefulWidget {
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  // final usernameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  // TextEditingController usernameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
   bool isLoading = false;
   final _formKey = GlobalKey<FormState>();
 
@@ -27,30 +30,103 @@ class _WelcomePageState extends State<WelcomePage> {
   double _width = 350;
   double _height = 300;
 
-  Future<bool> checkEmailExistence(String email) async {
-    final response = await http.get(
-      Uri.parse('http://172.105.154.202:8000/api/check-email?email=$email'),
-    );
-    print('Response status code: ${response.statusCode}');
-    print('Response body: ${response.body}');
+  Future<void> loginUser(BuildContext context, String email, String password) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            title: Text('Logging In'),
+            content: CircularProgressIndicator(),
+          );
+        },
+      );
 
-    if (response.statusCode == 200) {
-      // Email exists
-      return true;
-    } else if (response.statusCode == 404) {
-      // Email does not exist
-      return false;
-    } else {
-      // Handle other response codes or errors
-      throw Exception('Failed to check email existence');
+      final response = await http.post(
+        Uri.parse('http://172.105.154.202:8000/api/login'),
+        body: {'email': email, 'password': password},
+      );
+
+      // Close loading indicator
+      Navigator.of(context).pop();
+
+      if (response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+
+        if (responseData.containsKey('token')) {
+          final token = responseData['token'];
+          print('Login successful');
+
+          // Save the token to SharedPreferences
+          final sharedPreferences = await SharedPreferences.getInstance();
+          sharedPreferences.setString('userToken', token);
+
+          // Navigate to the HomeScreen upon successful login
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(),
+            ),
+          );
+        } else {
+          showErrorMessage(context, 'Server did not return a token.');
+        }
+      } else if (response.statusCode == 401) {
+        showErrorMessage(context, 'Wrong credentials');
+      } else {
+        showErrorMessage(context, 'Login failed: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      print('Error during login: $e');
+      showErrorMessage(context, 'Error during login: $e');
     }
   }
-  Future<void> checkUserLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-    if (isLoggedIn) {
-      // User is logged in, navigate to HomeScreen
+  void showErrorMessage(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Login Failed'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Future<void> checkExistingToken() async {
+  //   final sharedPreferences = await SharedPreferences.getInstance();
+  //   final token = sharedPreferences.getString('userToken');
+  //
+  //   if (token != null) {
+  //     // Token exists, navigate to HomeScreen directly
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => HomeScreen(),
+  //       ),
+  //     );
+  //   }
+  // }
+  Future<void> checkExistingToken(BuildContext context) async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final token = sharedPreferences.getString('userToken');
+
+    if (token != null) {
+      // Set the token in the provider
+      Provider.of<AuthProvider>(context, listen: false).setUserToken(token);
+
+      // Navigate to HomeScreen directly
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -59,50 +135,11 @@ class _WelcomePageState extends State<WelcomePage> {
       );
     }
   }
-  void handleLogin(BuildContext context) async {
-    final email = emailController.text.trim(); // Trim the email input
-    final exists = await checkEmailExistence(email);
-
-    if (exists) {
-      // Email exists, navigate to HomeScreen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(),
-        ),
-      );
-
-      // Save the user's login credentials or authentication token to persistent storage
-      saveUserLogin(email);
-
-      // Set isLoggedIn to true in shared preferences
-      saveLoginStatus(true);
-    } else {
-      // Email does not exist, continue with login
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Signup(),
-        ),
-      );
-    }
-  }
-  void saveLoginStatus(bool isLoggedIn) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isLoggedIn', isLoggedIn);
-  }
-  void saveUserLogin(String email) async {
-    // Use a persistent storage mechanism to save the user's login credentials or authentication token
-    // For example, you can use shared preferences or local storage
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('userEmail', email);
-  }
-
 
       @override
   void initState() {
     super.initState();
-    checkUserLoggedIn();
+    checkExistingToken(context);
   }
 
   @override
@@ -167,7 +204,13 @@ class _WelcomePageState extends State<WelcomePage> {
                       hintText: 'Email',
                       obscureText: false,
                     ),
-                    const SizedBox(height: 50),
+                    const SizedBox(height:10),
+                        MyTextField(
+                          controller: passwordController,
+                          hintText: 'Password',
+                          obscureText: false,
+                        ),
+                        const SizedBox(height:10),
 
                         // ElevatedButton(
                         //   onPressed: () async {
@@ -197,7 +240,7 @@ class _WelcomePageState extends State<WelcomePage> {
                                 isLoading = true; // Set loading state to true
                               });
 
-                               handleLogin(context);
+                              loginUser(context, emailController.text, passwordController.text);
 
                               setState(() {
                                 isLoading = false; // Set loading state back to false
@@ -266,12 +309,26 @@ class _WelcomePageState extends State<WelcomePage> {
                                                 .size
                                                 .height *
                                                 0.01),
-                                        const Text('Forgot Email?',
+                                        GestureDetector(
+                                          onTap: () {
+
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ForgotPassword(),
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                            'Forgot Email?',
                                             style: TextStyle(
-                                                color: Color.fromARGB(255, 4, 46, 124),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12),
-                                            textAlign: TextAlign.start),
+                                              color: Color.fromARGB(255, 4, 46, 124),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                            textAlign: TextAlign.start,
+                                          ),
+                                        )
                                       ],
                                     ),
                                   ),

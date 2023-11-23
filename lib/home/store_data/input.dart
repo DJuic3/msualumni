@@ -11,12 +11,15 @@ class InputField extends StatelessWidget {
     required this.hint,
     this.controller,
     this.widget,
+    required this.enabled,
+
   }) : super(key: key);
 
   final String fullname;
   final String hint;
   final TextEditingController? controller;
   final Widget? widget;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +44,7 @@ class InputField extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextFormField(
+                    enabled: enabled,
                     controller: controller,
                     autofocus: false,
                     readOnly: widget != null ? true : false,

@@ -9,6 +9,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:share/share.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../components/pallete.dart';
 
@@ -35,12 +36,18 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
     final response = await http.get(Uri.parse(apiUrl));
 
     if (response.statusCode == 200) {
-      setState(() {
-        posts = json.decode(response.body)['posts'];
-      });
+      try {
+        final responseData = json.decode(response.body);
+        setState(() {
+          posts = responseData['posts'];
+        });
+      } catch (e) {
+        print('Error decoding JSON: $e');
+        print('Response body: ${response.body}');
+      }
     } else {
       // Handle errors, e.g., show an error message
-      print('Error fetching blog posts');
+      print('API request failed with status code: ${response.statusCode}');
     }
   }
   Future<void> _refreshPosts() async {
@@ -66,6 +73,25 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
   Future<String?> getUserEmail() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('userEmail');
+  }
+  // Function to open Gmail
+  void openGmail() async {
+    // Specify the email address
+    String email = '';
+
+    // Create the Gmail URL
+    String gmailUrl = 'mailto:$email';
+
+    // Encode the URL
+    String encodedGmailUrl = Uri.encodeFull(gmailUrl);
+
+    // Launch the URL
+    if (await canLaunch(encodedGmailUrl)) {
+      await launch(encodedGmailUrl);
+    } else {
+      // Handle error
+      throw 'Could not launch $encodedGmailUrl';
+    }
   }
 
 
@@ -157,7 +183,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                       child: Text(
                         post['content'],
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
+                          fontSize: 12,
                           color: Colors.blue[900],
                         ),
                       ),
@@ -194,7 +220,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     'Contact Email:',
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontWeight: FontWeight.bold,
                                                       fontFamily: 'Intel',
                                                     ),
@@ -204,7 +230,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     post['contactemail'],
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontFamily: 'Intel',
                                                     ),
                                                   ),
@@ -218,7 +244,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     'Company:',
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontWeight: FontWeight.bold,
                                                       fontFamily: 'Intel',
                                                     ),
@@ -228,7 +254,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     post['company'],
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontFamily: 'Intel',
                                                     ),
                                                   ),
@@ -242,7 +268,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     'Position:',
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontWeight: FontWeight.bold,
                                                       fontFamily: 'Intel',
                                                     ),
@@ -252,7 +278,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     post['position'],
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontFamily: 'Intel',
                                                     ),
                                                   ),
@@ -266,7 +292,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     'Location:',
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontWeight: FontWeight.bold,
                                                       fontFamily: 'Intel',
                                                     ),
@@ -276,7 +302,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     post['location'],
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontFamily: 'Intel',
                                                     ),
                                                   ),
@@ -290,7 +316,7 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     'Education:',
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontWeight: FontWeight.bold,
                                                       fontFamily: 'Intel',
                                                     ),
@@ -300,12 +326,22 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
                                                   child: Text(
                                                     post['education'],
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 12,
                                                       fontFamily: 'Intel',
                                                     ),
                                                   ),
                                                 ),
+
+
+
                                               ],
+                                            ),
+                                            SizedBox(height: 20),  // Add some spacing between text and image
+                                            Image.asset(
+                                              'assets/images/bg.jpg',  // Replace with your image URL
+                                              width: double.infinity,  // Set the width of the image
+                                              height: 165,  // Set the height of the image
+                                              fit: BoxFit.cover,  // Choose the BoxFit property as needed
                                             ),
                                             Expanded(child: SizedBox(height: 16)),
                                             Container(
@@ -313,14 +349,15 @@ class _BlogPostsScreenState extends State<BlogPostsScreen> {
 
                                               child: ElevatedButton(
                                                 child: const Text(
-                                                  'OK',
+                                                  'Apply Now',
 
                                                   style: TextStyle(fontSize: 18),
 
                                                 ),
 
                                                 onPressed: () {
-                                                  Navigator.pop(context);
+                                                  // Navigator.pop(context);
+                                                  openGmail();
                                                 },
                                               ),
                                             ),
